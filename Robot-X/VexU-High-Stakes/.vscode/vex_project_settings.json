@@ -1,0 +1,19 @@
+{
+	"extension": {
+		"version": "0.5.0",
+		"json": 2
+	},
+	"project": {
+		"name": "VexU-High-Stakes",
+		"description": "",
+		"creationDate": "5/17/2024, 2:33:21 PM",
+		"platform": "V5",
+		"language": "cpp",
+		"slot": 7,
+		"sdkVersion": "V5_20240223_11_00_00",
+		"cpp": {
+			"includePath": [],
+			"printf_float": true
+		}
+	}
+}
