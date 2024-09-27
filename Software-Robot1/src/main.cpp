@@ -1,9 +1,9 @@
 /*----------------------------------------------------------------------------*/
 /*                                                                            */
 /*    Module:       main.cpp                                                  */
-/*    Author:       Michael                                                   */
+/*    Author:       University of Delaware Team 1                             */
 /*    Created:      5/17/2024, 2:33:21 PM                                     */
-/*    Description:  V5 project                                                */
+/*    Description:  Software for Robot 1 of UD's VEX Varsity Team             */
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
 #include <iostream>
