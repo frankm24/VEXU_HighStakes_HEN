@@ -3,7 +3,7 @@
 /*    Module:       main.cpp                                                  */
 /*    Author:       University of Delaware Team 1                             */
 /*    Created:      5/17/2024, 2:33:21 PM                                     */
-/*    Description:  Software for Robot 1 of UD's VEX Varsity Team             */
+/*    Description:  Software for Robot HEN of UD's VEXU Team                  */
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
 #include <iostream>
@@ -17,9 +17,10 @@ using namespace vex;
 #define TURN_SPEED_RATIO 0.5
 
 // Global Constants
-const gearSetting RED_GEAR = ratio36_1;
-const gearSetting GREEN_GEAR = ratio18_1;
-const gearSetting BLUE_GEAR = ratio6_1;
+// Make sure to define a motor with the right gear ratio (motor gear color)
+const gearSetting RED_GEAR = ratio36_1; // 100 RPM - high torque & low speed (e.g. lifting arms & moving claws,)
+const gearSetting GREEN_GEAR = ratio18_1; // 200 RPM - standard gear ratio for drivetrain applications 
+const gearSetting BLUE_GEAR = ratio6_1; // 600 RPM - low torque & high speed (e.g.  intake rollers & flywheels))
 
 // A global instance of vex::brain
 vex::brain Brain;
