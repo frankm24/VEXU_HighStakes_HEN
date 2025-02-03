@@ -27,20 +27,27 @@ vex::brain Brain;
 
 // Global instance of competition
 competition compete;
-
 // Global instance of controller
 controller primary_controller = controller(primary);
 
 // define your global instances of motors and other devices here
 motor left_motor_front = motor(PORT1, GREEN_GEAR, false);
-motor left_motor_mid = motor(PORT3, GREEN_GEAR, false);
-motor left_motor_back = motor(PORT5, GREEN_GEAR, false);
+motor left_motor_mid = motor(PORT2, GREEN_GEAR, false);
+motor left_motor_back = motor(PORT3, GREEN_GEAR, false);
 motor_group left_motor_group = motor_group(left_motor_front, left_motor_mid, left_motor_back);
 
-motor right_motor_front = motor(PORT2, GREEN_GEAR, true);
-motor right_motor_mid = motor(PORT4, GREEN_GEAR, true);
-motor right_motor_back = motor(PORT6, GREEN_GEAR, true);
+motor right_motor_front = motor(PORT6, GREEN_GEAR, true);
+motor right_motor_mid = motor(PORT7, GREEN_GEAR, true);
+motor right_motor_back = motor(PORT8, GREEN_GEAR, true);
 motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, right_motor_back);
+
+motor intake_motor = motor(PORT19, GREEN_GEAR, false);
+motor belt_motor = motor(PORT20, GREEN_GEAR, false);
+
+void intake_toggle(void){
+    std::cout<<"Intake Toggle"<<std::endl;
+}
+
 
 // Code block for Pre-Autonomous 
 void pre_auton(void) {
@@ -67,8 +74,8 @@ void autonomous(void) {
 void dual_stick_drive(void){
 
     // Controls for Up-Down and Left-Right movement
-    float leftStick = (float)(primary_controller.Axis3.position() / 100.0);             // Vertical Movement
-    float rightStick = primary_controller.Axis1.position() / (float)100.0;            // Horizontal Movement
+    float leftStick = -(float)(primary_controller.Axis3.position() / 100.0);             // Vertical Movement
+    float rightStick = primary_controller.Axis1.position() / (float)-100.0;            // Horizontal Movement
    
     
     // Motor speed percentage based on cubed function
@@ -80,11 +87,11 @@ void dual_stick_drive(void){
 
     
     if(fabs(ySpeed) > 0.05 or fabs(xSpeed) > 0.05){
-        printf("Left Stick: %f, Right Stick: %f\n", ySpeed, xSpeed);
+        //printf("Left Stick: %f, Right Stick: %f\n", ySpeed, xSpeed);
 
         //Set the velocity depending on the axis position
         left_motor_group.setVelocity((ySpeed + xSpeed) * 100,vex::percentUnits::pct);
-        right_motor_group.setVelocity((ySpeed - xSpeed) * 100,vex::percentUnits::pct);
+        right_motor_group.setVelocity((ySpeed - xSpeed) * 100,vex::percentUnits::pct); 
 
         left_motor_group.spin(forward);
         right_motor_group.spin(forward);
@@ -105,6 +112,40 @@ void usercontrol(void) {
     
     // Usercontrol loop
     while(true){
+        bool buttonR1 = primary_controller.ButtonR1.pressing();
+        bool buttonR2 = primary_controller.ButtonR2.pressing();
+        bool buttonL1 = primary_controller.ButtonL1.pressing();
+        bool buttonL2 = primary_controller.ButtonL2.pressing();
+
+        if(primary_controller.ButtonA.pressing()){
+            std::cout<<"Button A pressed!"<<std::endl;
+        }
+        
+
+        if(buttonR1 && !buttonR2){
+            intake_motor.setVelocity(-100, vex::percentUnits::pct);
+            intake_motor.spin(forward);
+        }
+        else if(buttonR2 && !buttonR1){
+            intake_motor.setVelocity(100, vex::percentUnits::pct);
+            intake_motor.spin(forward); 
+        }
+        else{
+            intake_motor.stop(brake);
+        }
+
+        if(buttonL1 && !buttonL2){
+            belt_motor.setVelocity(-100, vex::percentUnits::pct);
+            belt_motor.spin(forward);   
+        }
+        else if(buttonL2 && !buttonL1){
+            belt_motor.setVelocity(100, vex::percentUnits::pct);
+            belt_motor.spin(forward); 
+        }
+        else{
+            belt_motor.stop(brake);
+        }
+
         dual_stick_drive();
     }
 }
@@ -112,9 +153,12 @@ void usercontrol(void) {
 int main() {
     Brain.Screen.print("Main start!");
     Brain.Screen.newLine();
+
     // Set up callbacks for autonomous and driver control periods.
     compete.autonomous(autonomous);
     compete.drivercontrol(usercontrol);
+
+    primary_controller.ButtonR1.pressed(intake_toggle);
 
     // Run the pre-autonomous function.
     pre_auton();
