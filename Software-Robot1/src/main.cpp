@@ -15,6 +15,9 @@ using namespace vex;
 
 // Definitions
 #define TURN_SPEED_RATIO 0.5
+#define BELT_THROW_POSITION 638 // Farthest Number of Degrees from starting position needed to throw ring (No more than 1 revolution around BELT)
+#define BELTRANGE 16 // Margin of error around throw position
+
 
 // Global Constants
 // Make sure to define a motor with the right gear ratio (motor gear color)
@@ -44,8 +47,50 @@ motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, 
 motor intake_motor = motor(PORT19, GREEN_GEAR, false);
 motor belt_motor = motor(PORT20, GREEN_GEAR, false);
 
+// Global Variables
+volatile bool belt_toggle_state = false;
+volatile bool color_detected = true; // TODO: Set up control to vision sensor
+
 void intake_toggle(void){
     std::cout<<"Intake Toggle"<<std::endl;
+}
+
+void belt_toggle_on(void){
+    std::cout<<"Belt Toggle On"<<std::endl;
+    belt_toggle_state = true;
+
+}
+
+void belt_toggle_off(void){
+    std::cout<<"Belt Toggle Off"<<std::endl;
+    belt_toggle_state = false;
+}
+
+void belt_control(void){
+    while(true){
+        int belt_position = abs((((int)belt_motor.position(vex::rotationUnits::deg)) % BELT_THROW_POSITION));
+        Brain.Screen.printAt(1, 150, "Belt Position: %6d", belt_position);
+        belt_motor.position(vex::rotationUnits::deg);
+
+        if(color_detected && belt_position >= -BELTRANGE/3 && belt_position <= BELTRANGE){
+            belt_motor.stop(vex::brakeType::brake);
+            wait(1, sec);
+            while(belt_position >= 0 && belt_position <= BELTRANGE){
+                belt_motor.setVelocity(-100, vex::percentUnits::pct);
+                belt_motor.spin(forward);
+                belt_position = abs((((int)belt_motor.position(vex::rotationUnits::deg)) % BELT_THROW_POSITION));
+            }
+        }
+        if(belt_toggle_state){
+            belt_motor.setVelocity(-100, vex::percentUnits::pct);
+            belt_motor.spin(forward);  
+        }
+        else{
+            belt_motor.stop(brake);
+        }
+
+
+    }
 }
 
 
@@ -110,13 +155,16 @@ void usercontrol(void) {
     Brain.Screen.print("User Control start!");
     Brain.Screen.newLine();
     
+    
     // Usercontrol loop
     while(true){
         bool buttonR1 = primary_controller.ButtonR1.pressing();
         bool buttonR2 = primary_controller.ButtonR2.pressing();
         bool buttonL1 = primary_controller.ButtonL1.pressing();
         bool buttonL2 = primary_controller.ButtonL2.pressing();
+        
 
+        
         if(primary_controller.ButtonA.pressing()){
             std::cout<<"Button A pressed!"<<std::endl;
         }
@@ -133,7 +181,7 @@ void usercontrol(void) {
         else{
             intake_motor.stop(brake);
         }
-
+        /*
         if(buttonL1 && !buttonL2){
             belt_motor.setVelocity(-100, vex::percentUnits::pct);
             belt_motor.spin(forward);   
@@ -145,6 +193,7 @@ void usercontrol(void) {
         else{
             belt_motor.stop(brake);
         }
+        */
 
         dual_stick_drive();
     }
@@ -159,6 +208,10 @@ int main() {
     compete.drivercontrol(usercontrol);
 
     primary_controller.ButtonR1.pressed(intake_toggle);
+    primary_controller.ButtonL1.pressed(belt_toggle_on);
+    primary_controller.ButtonL2.pressed(belt_toggle_off);
+
+    thread beltThread = thread(belt_control);
 
     // Run the pre-autonomous function.
     pre_auton();
