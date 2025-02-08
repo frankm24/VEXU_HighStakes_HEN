@@ -16,7 +16,8 @@ using namespace vex;
 // Definitions
 #define TURN_SPEED_RATIO 0.5
 #define BELT_THROW_POSITION 638 // Farthest Number of Degrees from starting position needed to throw ring (No more than 1 revolution around BELT)
-#define BELTRANGE 16 // Margin of error around throw position
+#define BELTRANGE 7 // Margin of error around throw position
+#define BELTSPEED -85
 
 
 // Global Constants
@@ -45,7 +46,7 @@ motor right_motor_back = motor(PORT8, GREEN_GEAR, true);
 motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, right_motor_back);
 
 motor intake_motor = motor(PORT19, GREEN_GEAR, false);
-motor belt_motor = motor(PORT20, GREEN_GEAR, false);
+motor belt_motor = motor(PORT16, GREEN_GEAR, false);
 
 // Global Variables
 volatile bool belt_toggle_state = false;
@@ -76,13 +77,13 @@ void belt_control(void){
             belt_motor.stop(vex::brakeType::brake);
             wait(1, sec);
             while(belt_position >= 0 && belt_position <= BELTRANGE){
-                belt_motor.setVelocity(-100, vex::percentUnits::pct);
+                belt_motor.setVelocity(BELTSPEED, vex::percentUnits::pct);
                 belt_motor.spin(forward);
                 belt_position = abs((((int)belt_motor.position(vex::rotationUnits::deg)) % BELT_THROW_POSITION));
             }
         }
         if(belt_toggle_state){
-            belt_motor.setVelocity(-100, vex::percentUnits::pct);
+            belt_motor.setVelocity(BELTSPEED, vex::percentUnits::pct);
             belt_motor.spin(forward);  
         }
         else{
@@ -90,6 +91,77 @@ void belt_control(void){
         }
 
 
+    }
+}
+
+// Color Sensor
+vision::signature CUS_BLUE = vision::signature(7, -4767, -3699, -4233, 6899, 8623, 7761, 3.2, 0);
+vision::signature CUS_RED = vision::signature(6, 8849, 11299, 10074, -1761, -911, -1336, 1.9, 0);
+
+vision vSens = vision(PORT20, 50, CUS_RED);
+
+// Enum to track the current vision state
+enum VisionState {
+    RED,
+    BLUE,
+    OFF
+};
+
+VisionState currentState = RED; // Start with red vision
+
+
+// Function to display the current status on the brain screen
+void displayStatus() {
+    Brain.Screen.clearScreen();
+    Brain.Screen.setCursor(1, 1);
+    
+    switch (currentState) {
+        case RED:
+            Brain.Screen.print("Ejecting Red Rings");
+            break;
+        case BLUE:
+            Brain.Screen.print("Ejecting Blue Rings");
+            break;
+        case OFF:
+            Brain.Screen.print("Ejection Off");
+            return; 
+    }
+}
+
+// Main program loop
+int vision_sensor_thread() {
+    std::cout<<(int)vSens.getBrightness()<<std::endl;
+    vSens.setBrightness((uint8_t) 50);
+    std::cout<<(int)vSens.getBrightness()<<std::endl;
+    while (true) {
+        // Check if Button A is pressed to toggle vision state
+        if (primary_controller.ButtonA.pressing()) {
+            // Cycle through the states: RED -> BLUE -> OFF -> RED
+            currentState = static_cast<VisionState>((currentState + 1) % 3);
+
+            // Clear previous snapshots when turned off
+            //if (currentState == OFF) vSens.setMode;
+
+            // Wait a short period to prevent multiple toggles
+            this_thread::sleep_for(200);
+        }
+
+        // Take a snapshot if vision is active
+        if (currentState != OFF) vSens.takeSnapshot(currentState == RED ? CUS_RED : CUS_BLUE);
+
+        // Display the current status on the screen
+        displayStatus(); 
+        //std::cout<<(int)vSens.objectCount<<std::endl;
+        // Check if an object is detected
+        if (vSens.objects[0].exists) {
+            // TODO: Add code to eject ring
+            color_detected = true;
+            std::cout<<"Color Detected!"<<std::endl;
+        }
+        else{
+            color_detected = false;
+        }
+        this_thread::sleep_for(100); 
     }
 }
 
@@ -165,9 +237,7 @@ void usercontrol(void) {
         
 
         
-        if(primary_controller.ButtonA.pressing()){
-            std::cout<<"Button A pressed!"<<std::endl;
-        }
+       
         
 
         if(buttonR1 && !buttonR2){
@@ -212,6 +282,7 @@ int main() {
     primary_controller.ButtonL2.pressed(belt_toggle_off);
 
     thread beltThread = thread(belt_control);
+    thread visionThread = thread(vision_sensor_thread);
 
     // Run the pre-autonomous function.
     pre_auton();
