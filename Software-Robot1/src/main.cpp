@@ -9,6 +9,8 @@
 #include <iostream>
 #include "vex.h"
 #include <math.h>
+#include "odometry.h"
+#include "path_planning.h"
 
 using namespace vex;
 
@@ -47,6 +49,18 @@ motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, 
 
 motor intake_motor = motor(PORT19, GREEN_GEAR, false);
 motor belt_motor = motor(PORT16, GREEN_GEAR, false);
+
+// define your global instances of motors and other devices here
+encoder left_encoder = encoder(Brain.ThreeWirePort.A);
+encoder right_encoder = encoder(Brain.ThreeWirePort.C);
+encoder offset_encoder = encoder(Brain.ThreeWirePort.E);
+
+// define further software abstractions
+Pose start_pose;
+OdometryConstants odometry_constants = {10, 5, 1};
+ThreeWheelLocalizer localizer = ThreeWheelLocalizer(
+    start_pose, odometry_constants, left_encoder, right_encoder, 
+    offset_encoder);
 
 // Global Variables
 volatile bool belt_toggle_state = false;
@@ -109,6 +123,27 @@ enum VisionState {
 
 VisionState currentState = RED; // Start with red vision
 
+void displayAutonomousStatus(Pose current_pose) {
+     Brain.Screen.clearScreen();
+            Brain.Screen.setPenColor(color::white);
+            Brain.Screen.drawLine(240, 0, 240, 480); // Vertical center line
+            Brain.Screen.drawLine(0, 120, 480, 120); // Horizontal center line
+
+            int graph_x = 240 + static_cast<int>(current_pose.x);
+            int graph_y = 120 - static_cast<int>(current_pose.y);
+            
+            Brain.Screen.setPenColor(color::red);
+            Brain.Screen.drawPixel(graph_x, graph_y);
+            Brain.Screen.drawLine(240,120,graph_x,graph_y);
+
+            Brain.Screen.printAt(10, 200, "X: %.2f, Y: %.2f, Rotation: %f", current_pose.x, current_pose.y,current_pose.heading);
+
+            int rotationX = static_cast<int>(30 * cos(current_pose.heading));
+            int rotationY = static_cast<int>(30 * sin(current_pose.heading));
+
+            Brain.Screen.setPenColor(color::blue);
+            Brain.Screen.drawLine(graph_x,graph_y,graph_x + rotationX,graph_y - rotationY);
+}
 
 // Function to display the current status on the brain screen
 void displayStatus() {
@@ -181,10 +216,11 @@ void pre_auton(void) {
 void autonomous(void) {
     Brain.Screen.print("Autonomous start!");
     Brain.Screen.newLine();
-
+    PathFollowing::driveForward(10, localizer, odometry_constants, 
+    left_motor_group, right_motor_group);
     // Autonomous loop
     while(true){
-
+        
     }
 }
 
@@ -214,7 +250,7 @@ void dual_stick_drive(void){
         right_motor_group.spin(forward);
 
     }
-    else{
+    else {
         left_motor_group.stop(coast);
         right_motor_group.stop(coast);
     }
@@ -227,18 +263,12 @@ void usercontrol(void) {
     Brain.Screen.print("User Control start!");
     Brain.Screen.newLine();
     
-    
     // Usercontrol loop
     while(true){
         bool buttonR1 = primary_controller.ButtonR1.pressing();
         bool buttonR2 = primary_controller.ButtonR2.pressing();
         bool buttonL1 = primary_controller.ButtonL1.pressing();
         bool buttonL2 = primary_controller.ButtonL2.pressing();
-        
-
-        
-       
-        
 
         if(buttonR1 && !buttonR2){
             intake_motor.setVelocity(-100, vex::percentUnits::pct);

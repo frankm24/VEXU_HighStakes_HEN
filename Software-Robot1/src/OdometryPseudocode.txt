@@ -1,0 +1,88 @@
+L = Distance between left and right encoders
+B = X distance between line that bisects the left and right encoders, and the line at the middle
+    of the perpendicular encoder
+
+P1 (x, y, theta) = Location of robot at the last timestep
+P2 (x, y, theta) = Location of the robot at current timestep
+
+S1 = distance left encoder moved from P1 to P2
+S1 = ∆x - (L/2)*(∆ theta)
+
+S2 = distance right encoder moved from P1 to P2
+S2 = ∆x + (L/2)*(∆ theta)
+
+S3 = distance front encoder moved from P1 to P2
+S3 = ∆y + B*(∆ theta)
+
+Relationship between encoder ticks and distance travelled:
+
+R = Odometry wheel radius
+N = Encoder ticks per revolution
+
+∆n = change in encoder tick reading
+
+C = units of R omni wheel travels per tick
+C = 2*pi*r/N
+
+S = distance wheel travelled (in same units as R)
+S = C*∆n
+
+Therefore:
+
+S1 = C*∆n_1
+S2 = C*∆n_2
+S3 = C*∆n_3
+
+So we have 3 equations for S1, S2, S3, and 3 unknowns (∆x, ∆y, ∆theta)
+Using algebra:
+
+∆x = C(∆n_1 + ∆n_2) / 2
+∆theta = C(∆n_2 - ∆n_1) / L
+∆y = C(∆n3 - B(∆n_2 - ∆n_1)/L)
+
+Now we have the change in x, y, and theta in terms of robot coordinates...
+Now we must translate to cordinates relative to robot's starting position
+
+(x_0, y_0, theta_0) = robot's last position 
+(x_1, y_1, theta_1) = robot's current position
+
+x_1 = x_0 + ∆xcos(theta_0) - ∆ysin(theta_0)
+y_1 = y_0 + ∆xsin(theta_0) + ∆ycos(theta_0)
+theta_1 = theta_0 + ∆theta
+
+
+
+----Path following control loop for a straight line
+
+<x_prev, y_prev, theta_prev> = updateLocalizer()
+
+while elapsed_time < duration:
+    x, y, theta = updateLocalizer()
+    
+    <vel_x, vel_y, vel_theta> = <x, y, theta> - <x_prev, y_prev, theta_prev>
+    
+    target_vel_x = getTargetVelocity(elapsed_time)
+    
+    # Step 1: Convert target velocity to wheel speed
+    target_linear_velocity = target_vel_x
+
+    # Convert linear velocity to wheel rotational speed
+    target_speed = (target_linear_velocity / wheel_radius)
+
+    # Step 2: Get current wheel speeds from odometry
+    current_left_speed = getWheelVelocity(left_encoder)
+    current_right_speed = getWheelVelocity(right_encoder)
+
+    # Step 3: Compute errors and apply PID
+    left_error = target_left_speed - current_left_speed
+    right_error = target_right_speed - current_right_speed
+
+    left_adjustment = PID_left.compute(left_error)
+    right_adjustment = PID_right.compute(right_error)
+
+    setMotorSpeeds(left_motor + left_adjustment, right_motor + right_adjustment)
+
+    # Step 4: Update state
+    x_prev, y_prev, theta_prev = x, y, theta
+
+    
