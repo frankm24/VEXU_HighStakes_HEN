@@ -49,7 +49,7 @@ motor right_motor_back = motor(PORT9, BLUE_GEAR, true);
 motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, right_motor_back);
 
 motor intake_motor = motor(PORT18, GREEN_GEAR, false);
-motor belt_motor = motor(PORT16, GREEN_GEAR, false);
+motor belt_motor = motor(PORT16, BLUE_GEAR, false);
 
 digital_out Actuator = digital_out(Brain.ThreeWirePort.H);
 
@@ -110,12 +110,17 @@ void belt_control(void){
         */
 
        if(color_detected){
-            wait(0.25, sec); // Wait until at peak
+            wait(0.15, sec); // Wait until at peak
             std::cout<<"Ejecting Ring!"<<std::endl;
             
             belt_motor.stop(vex::brakeType::brake); // Briefly stop
-            wait(0.35, sec);
+            wait(0.45, sec);
+            //belt_motor.setVelocity(BELTSPEED, vex::percentUnits::pct);
+            belt_motor.spin(forward);
+            wait(0.7, sec);
 
+
+            /*
             while(belt_position >= 0 && belt_position <= BELTRANGE){
                 if(reverse_belt)
                     belt_motor.setVelocity(-BELTSPEED, vex::percentUnits::pct);
@@ -125,6 +130,7 @@ void belt_control(void){
                 belt_motor.spin(forward);
                 belt_position = abs((((int)belt_motor.position(vex::rotationUnits::deg)) % BELT_THROW_POSITION));
             }
+            */
        }
 
         if(belt_toggle_state){
@@ -236,6 +242,7 @@ int vision_sensor_thread() {
         if (vSens.objects[0].exists) {
             // TODO: Add code to eject ring
             color_detected = true;
+            this_thread::sleep_for(250);
             //std::cout<<"Color Detected!"<<std::endl;
         }
         else{
