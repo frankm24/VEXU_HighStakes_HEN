@@ -41,10 +41,9 @@ class TrapezoidalProfile {
 
 namespace PathFollowing {
     void driveForward(double distance, ThreeWheelLocalizer localizer, 
-    OdometryConstants odometry_constants, vex::motor_group left_motor_group,
+    DriveConstants drive_constants, vex::motor_group left_motor_group,
     vex::motor_group right_motor_group);
-
-    void rotate(double degrees);
+    void rotateDegrees(double degrees);
 }
 
 #endif

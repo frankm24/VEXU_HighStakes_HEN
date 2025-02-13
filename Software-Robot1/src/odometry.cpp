@@ -3,7 +3,7 @@
 #include "odometry.h"
 #include <cmath>
 
-ThreeWheelLocalizer::ThreeWheelLocalizer(Pose initial_pose, OdometryConstants odometry_constants, 
+ThreeWheelLocalizer::ThreeWheelLocalizer(Pose initial_pose, DriveConstants odometry_constants, 
     vex::encoder& left_encoder, vex::encoder& right_encoder, vex::encoder& offset_encoder) : 
     DIST_TRACK_WIDTH(odometry_constants.DIST_TRACK_WIDTH),
     DIST_FRONT_OFFSET(odometry_constants.DIST_FRONT_OFFSET),

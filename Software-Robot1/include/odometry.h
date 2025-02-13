@@ -5,7 +5,7 @@
 #include "vex.h"
 #include "pose.h"
 
-struct OdometryConstants {
+struct DriveConstants {
     const double DIST_TRACK_WIDTH;
     const double DIST_FRONT_OFFSET;
     const double ODO_WHEEL_RADIUS;
@@ -30,7 +30,7 @@ class ThreeWheelLocalizer {
 
     public:
         ThreeWheelLocalizer(Pose initial_pose, 
-        OdometryConstants odometry_constants, vex::encoder& left_encoder, 
+        DriveConstants odometry_constants, vex::encoder& left_encoder, 
         vex::encoder& right_encoder, vex::encoder& offset_encoder);
         void update(double delta_time);
         Pose getPoseEstimate();

@@ -61,7 +61,7 @@ encoder offset_encoder = encoder(Brain.ThreeWirePort.E);
 
 // define further software abstractions
 Pose start_pose;
-OdometryConstants odometry_constants = {10, 5, 1};
+DriveConstants odometry_constants = {10, 5, 1};
 ThreeWheelLocalizer localizer = ThreeWheelLocalizer(
     start_pose, odometry_constants, left_encoder, right_encoder, 
     offset_encoder);

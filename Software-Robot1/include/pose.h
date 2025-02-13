@@ -10,6 +10,7 @@ struct Pose {
         Pose operator+(const Pose& other) const;
         Pose operator*(double scalar) const;
         Pose operator/(double scalar) const;
+        double distance();
 };
 
 #endif
