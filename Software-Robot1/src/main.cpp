@@ -36,6 +36,7 @@ vex::brain Brain;
 competition compete;
 // Global instance of controller
 controller primary_controller = controller(primary);
+controller partner_controller = controller(partner);
 
 // define your global instances of motors and other devices here
 motor left_motor_front = motor(PORT17, BLUE_GEAR, false);
@@ -260,17 +261,29 @@ void displayStatus() {
             Brain.Screen.drawCircle(50, 50, 50, blue);
             primary_controller.Screen.clearScreen();
             primary_controller.Screen.print("Ejecting Red Rings\n");
+
+            secondary_controller.Screen.clearScreen();
+            secondary_controller.Screen.print("Ejecting Red Rings\n");
             
             break;
         case BLUE:
             Brain.Screen.clearScreen(blue);
             primary_controller.Screen.print("Ejecting Blue Rings\n");
+
+            secondary_controller.Screen.clearScreen();
+            secondary_controller.Screen.print("Ejecting Blue Rings\n");
+
             Brain.Screen.drawCircle(50, 50, 50, red);
             break;
         case OFF:
             Brain.Screen.clearScreen(black);
             Brain.Screen.drawCircle(50, 50, 50, purple);
+
+            primary_controller.Screen.clearScreen();
             primary_controller.Screen.print("Ejection Off\n");
+
+            secondary_controller.Screen.clearScreen();
+            secondary_controller.Screen.print("Ejection Off\n");
             return; 
     }
 }
@@ -282,7 +295,7 @@ int vision_sensor_thread() {
     std::cout<<(int)vSens.getBrightness()<<std::endl;
     while (true) {
         // Check if Button A is pressed to toggle vision state
-        if (primary_controller.ButtonA.pressing()) {
+        if (secondary_controller.ButtonA.pressing()) {
             // Cycle through the states: RED -> BLUE -> OFF -> RED
             currentState = static_cast<VisionState>((currentState + 1) % 3);
 
@@ -380,10 +393,10 @@ void usercontrol(void) {
     
     // Usercontrol loop
     while(true){
-        bool buttonR1 = primary_controller.ButtonR1.pressing();
-        bool buttonR2 = primary_controller.ButtonR2.pressing();
-        bool buttonL1 = primary_controller.ButtonL1.pressing();
-        bool buttonL2 = primary_controller.ButtonL2.pressing();
+        bool buttonR1 = secondary_controller.ButtonR1.pressing();
+        bool buttonR2 = secondary_controller.ButtonR2.pressing();
+        bool buttonL1 = secondary_controller.ButtonL1.pressing();
+        bool buttonL2 = secondary_controller.ButtonL2.pressing();
 
         if(primary_controller.ButtonX.pressing()){
             Actuator.set(true);
@@ -394,7 +407,7 @@ void usercontrol(void) {
             //std::cout<<"Actuator set to false"<<std::endl;
         }
 
-        if(primary_controller.ButtonY.pressing()){
+        if(secondary_controller.ButtonY.pressing()){
             reverse_belt = true;
             //std::cout<<"Reverse Belt"<<std::endl;
         }
@@ -444,9 +457,9 @@ int main() {
     compete.autonomous(autonomous);
     compete.drivercontrol(usercontrol);
 
-    primary_controller.ButtonR1.pressed(intake_toggle);
-    primary_controller.ButtonL1.pressed(belt_toggle_on);
-    primary_controller.ButtonL2.pressed(belt_toggle_off);
+    secondary_controller.ButtonR1.pressed(intake_toggle);
+    secondary_controller.ButtonL1.pressed(belt_toggle_on);
+    secondary_controller.ButtonL2.pressed(belt_toggle_off);
 
     thread beltThread = thread(belt_control);
     thread visionThread = thread(vision_sensor_thread);
