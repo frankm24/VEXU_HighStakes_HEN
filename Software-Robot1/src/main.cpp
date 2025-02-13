@@ -70,6 +70,67 @@ volatile bool belt_toggle_state = false;
 volatile bool color_detected = true; // TODO: Set up control to vision sensor
 volatile bool reverse_belt = false;
 
+
+#define KP 0.01
+#define LR_KP 0.05
+#define TILEREVOLUTIONS 2.78
+#define TIMEOUT_TIME 2000 // Time in milliseconds to wait for a command to complete
+#define MINVOLTAGE 6
+#define MAXVOLTAGE 8
+
+// PID Control
+double PIDControl(float target, float position){
+    return (target - position) * KP;
+}
+
+void driveForward(int tiles){
+    int t = (int)(tiles * TILEREVOLUTIONS);
+    float avg_position = 0;
+
+    left_motor_group.setPosition(0, degrees);
+    right_motor_group.setPosition(0, degrees);
+
+    uint32_t start_time = Brain.Timer.time();
+
+    while(!(t+1 > avg_position && avg_position > t-1)){
+        double left_position = left_motor_group.position(degrees);
+        double right_position = right_motor_group.position(degrees);
+        avg_position = (left_position + right_position) / 2;
+        double drive = PIDControl(t, avg_position); // Calculate the drive value
+
+        // Don't allow drive to go below minimum voltage (speed)
+        drive = (drive < MINVOLTAGE && drive > 0) ? MINVOLTAGE : drive;
+        drive = (drive > -MINVOLTAGE && drive < 0) ? -MINVOLTAGE : drive;
+
+        // Don't allow drive to go above maximum voltage (speed)
+        drive = (drive > MAXVOLTAGE) ? MAXVOLTAGE : drive;
+        drive = (drive < -MAXVOLTAGE) ? -MAXVOLTAGE : drive;
+
+        // P-Control between left and right motors
+        double left_voltage_drive, right_voltage_drive = drive;
+        if(left_position > right_position)
+            left_voltage_drive += (right_position - left_position) * LR_KP; // If left is ahead, slow down left
+        else
+            right_voltage_drive += (left_position - right_position) * LR_KP; // If right is ahead, slow down right
+
+        // Set the motor voltages
+        left_motor_group.spin(forward, left_voltage_drive, voltageUnits::volt);
+        right_motor_group.spin(forward, right_voltage_drive, voltageUnits::volt);
+        
+        uint32_t elapsed_time = Brain.Timer.time() - start_time;
+        if(elapsed_time > TIMEOUT_TIME)
+            break; // Break if the command takes too long
+
+    }
+
+    // Stop the motors
+    left_motor_group.stop(brakeType::brake);
+    right_motor_group.stop(brakeType::brake);
+
+    return;
+}
+
+
 void intake_toggle(void){
     std::cout<<"Intake Toggle"<<std::endl;
 }
@@ -214,7 +275,7 @@ void displayStatus() {
     }
 }
 
-// Main program loop
+// Vision Sensor Thread
 int vision_sensor_thread() {
     std::cout<<(int)vSens.getBrightness()<<std::endl;
     vSens.setBrightness((uint8_t) 50);
@@ -268,12 +329,14 @@ void pre_auton(void) {
 void autonomous(void) {
     Brain.Screen.print("Autonomous start!");
     Brain.Screen.newLine();
-    PathFollowing::driveForward(10, localizer, odometry_constants, 
-    left_motor_group, right_motor_group);
-    // Autonomous loop
-    while(true){
-        
-    }
+    //PathFollowing::driveForward(10, localizer, odometry_constants, 
+    //left_motor_group, right_motor_group);
+    
+    driveForward(1);
+    wait(2, sec);
+    //driveForward(-1);
+    //wait(2, sec);
+    driveForward(2);
 }
 
 void dual_stick_drive(void){
