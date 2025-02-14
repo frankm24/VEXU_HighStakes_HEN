@@ -13,6 +13,7 @@
 #include "path_planning.h"
 #include <sstream>
 #include <iomanip>
+#include <string>
 
 using namespace vex;
 
@@ -364,6 +365,7 @@ void displayStatus() {
             secondary_controller.Screen.print("Eject OFF\n");
             return; 
     }
+    Brain.Screen.setCursor(2, 1);
     switch (currentDriveMode){
         case TANK:
             primary_controller.Screen.print("DRIVE TANK");
@@ -374,17 +376,18 @@ void displayStatus() {
             secondary_controller.Screen.print("DRIVE DUAL");
             break;
     }
+    Brain.Screen.setCursor(3, 1);
     double belt_motor_temp = belt_motor.temperature(temperatureUnits::celsius);
     std::string belt_status = "BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1);
     double battery_soc = Brain.Battery.capacity();
     std::string battery_status = "BAT" + format_decimal_places(battery_soc, 1);
 
-    primary_controller.Screen.print(belt_status);
-    secondary_controller.Screen.print(belt_status);
+    primary_controller.Screen.print(belt_status.c_str());
+    secondary_controller.Screen.print(belt_status.c_str());
 
-    primary_controller.Screen.print(battery_status);
-    secondary_controller.Screen.print(battery_status);
-    wait(50, timeUnits::msec);
+    primary_controller.Screen.print(battery_status.c_str());
+    secondary_controller.Screen.print(battery_status.c_str());
+    wait(100, timeUnits::msec);
 }
 
 // Vision Sensor Thread
