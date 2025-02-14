@@ -9,8 +9,8 @@
 #include <iostream>
 #include "vex.h"
 #include <math.h>
-#include "odometry.h"
-#include "path_planning.h"
+//#include "odometry.h"
+//#include "path_planning.h"
 #include <sstream>
 #include <iomanip>
 #include <string>
@@ -65,11 +65,12 @@ encoder offset_encoder = encoder(Brain.ThreeWirePort.E);
 #define HIGHSTAKES_BACKWARD_MOTOR_BUTTON secondary_controller.ButtonY.pressing()
 
 // define further software abstractions
+/*
 Pose start_pose;
 DriveConstants odometry_constants = {10, 5, 1};
 ThreeWheelLocalizer localizer = ThreeWheelLocalizer(
     start_pose, odometry_constants, left_encoder, right_encoder, 
-    offset_encoder);
+    offset_encoder);*/
 
 // Global Variables
 volatile bool belt_toggle_state = false;
@@ -83,6 +84,12 @@ volatile bool reverse_belt = false;
 #define TIMEOUT_TIME 2000 // Time in milliseconds to wait for a command to complete
 #define MINVOLTAGE 6
 #define MAXVOLTAGE 8
+
+// Code block for User Control
+enum driveMode{
+    TANK,DUAL_STICK
+};
+driveMode currentDriveMode = DUAL_STICK;
 
 std::string format_decimal_places(double value, int places) {
     std::stringstream ss;
@@ -305,8 +312,8 @@ enum VisionState {
     OFF
 };
 
-VisionState currentState = RED; // Start with red vision
-
+VisionState currentState = BLUE; // Start with red vision
+/*
 void displayAutonomousStatus(Pose current_pose) {
      Brain.Screen.clearScreen();
             Brain.Screen.setPenColor(color::white);
@@ -328,13 +335,12 @@ void displayAutonomousStatus(Pose current_pose) {
             Brain.Screen.setPenColor(color::blue);
             Brain.Screen.drawLine(graph_x,graph_y,graph_x + rotationX,graph_y - rotationY);
 }
-
+*/
 // Function to display the current status on the brain screen
 void displayStatus() {
     Brain.Screen.clearScreen();
     primary_controller.Screen.clearScreen();
     secondary_controller.Screen.clearScreen();
-    Brain.Screen.setCursor(1, 1);
 
     switch (currentState) {
         case RED:
@@ -355,26 +361,30 @@ void displayStatus() {
             Brain.Screen.drawCircle(50, 50, 50, purple);
             return; 
     }
-    Brain.Screen.setCursor(2, 1);
+    primary_controller.Screen.setCursor(1, 1);
+    secondary_controller.Screen.setCursor(1, 1);
     switch (currentDriveMode){
         case TANK:
-            primary_controller.Screen.print("DRIVE TANK");
-            secondary_controller.Screen.print("DRIVE TANK");
+            primary_controller.Screen.print("DRIVE TANK\n");
+            secondary_controller.Screen.print("DRIVE TANK\n");
             break;
         case DUAL_STICK:
-            primary_controller.Screen.print("DRIVE DUAL");
-            secondary_controller.Screen.print("DRIVE DUAL");
+            primary_controller.Screen.print("DRIVE DUAL\n");
+            secondary_controller.Screen.print("DRIVE DUAL\n");
             break;
     }
-    Brain.Screen.setCursor(3, 1);
     double belt_motor_temp = belt_motor.temperature(temperatureUnits::celsius);
-    std::string belt_status = "BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1);
+    std::string belt_status = "BELT MTR TMP " + format_decimal_places(belt_motor_temp, 1);
     double battery_soc = Brain.Battery.capacity();
-    std::string battery_status = "BAT" + format_decimal_places(battery_soc, 1);
+    std::string battery_status = "BAT " + format_decimal_places(battery_soc, 1);
 
+    primary_controller.Screen.setCursor(2, 1);
+    secondary_controller.Screen.setCursor(2, 1);
     primary_controller.Screen.print(belt_status.c_str());
     secondary_controller.Screen.print(belt_status.c_str());
 
+    primary_controller.Screen.setCursor(3, 1);
+    secondary_controller.Screen.setCursor(3, 1);
     primary_controller.Screen.print(battery_status.c_str());
     secondary_controller.Screen.print(battery_status.c_str());
     this_thread::sleep_for(100);
@@ -442,10 +452,7 @@ void autonomous(void) {
     driveForward(2);
 }
 
-// Code block for User Control
-enum driveMode{
-    TANK,DUAL_STICK
-};
+
 
 void dual_stick_drive(void){
 
@@ -510,7 +517,6 @@ void tank_drive(void){
 
 }
 
-driveMode currentDriveMode = DUAL_STICK;
 void usercontrol(void) {
     Brain.Screen.print("User Control start!");
     Brain.Screen.newLine();
