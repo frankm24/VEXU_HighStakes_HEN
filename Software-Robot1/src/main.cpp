@@ -384,6 +384,7 @@ void displayStatus() {
 
     primary_controller.Screen.print(battery_status);
     secondary_controller.Screen.print(battery_status);
+    wait(50, timeUnits::msec);
 }
 
 // Vision Sensor Thread
@@ -406,9 +407,7 @@ int vision_sensor_thread() {
 
         // Take a snapshot if vision is active
         if (currentState != OFF) vSens.takeSnapshot(currentState == RED ? CUS_RED : CUS_BLUE);
-
-        // Display the current status on the screen
-        displayStatus(); 
+    
         //std::cout<<(int)vSens.objectCount<<std::endl;
         // Check if an object is detected
         if (vSens.objects[0].exists) {
@@ -598,6 +597,7 @@ int main() {
     thread actuatorThread = thread(actuator_thread);
     thread beltThread = thread(belt_control);
     thread visionThread = thread(vision_sensor_thread);
+    thread displayThread = thread(displayStatus);
 
     // Run the pre-autonomous function.
     pre_auton();
