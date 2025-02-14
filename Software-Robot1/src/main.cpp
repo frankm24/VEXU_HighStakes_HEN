@@ -79,9 +79,64 @@ volatile bool reverse_belt = false;
 #define MAXVOLTAGE 8
 
 // PID Control
-double PIDControl(float target, float position){
+double PIDControl(double target, double position){
     return (target - position) * KP;
 }
+
+void rotateTo(double target) {
+        vex::timer timer = vex::timer();
+
+        bool is_negative = (target < 0);
+        double magnitude = fabs(target);
+        double avg_pos = 0;
+        
+        left_motor_group.setPosition(0, vex::rotationUnits::deg);
+        right_motor_group.setPosition(0, vex::rotationUnits::deg);
+        timer.reset();
+        double start_time = timer.value();
+
+        // PID Loop
+        while (!(avg_pos <= target && avg_pos >= target - 1)) {
+            double left_pos = abs(left_motor_group.position(vex::rotationUnits::deg));
+            double right_pos = abs(right_motor_group.position(vex::rotationUnits::deg));
+            avg_pos = (left_pos + right_pos) / 2;
+            double drive = PIDControl(target, avg_pos);
+            
+            // Clamp voltage to min and max 
+            if (drive < MINVOLTAGE && drive > 0) {
+                drive = MINVOLTAGE;
+            } else if (drive > -MINVOLTAGE && drive < 0) {
+                drive = -MINVOLTAGE;
+            }
+            if (drive < MAXVOLTAGE) {
+                drive = MAXVOLTAGE;
+            } else if (drive < -MAXVOLTAGE) {
+                drive = -MAXVOLTAGE;
+            }
+            
+            double left_drive = drive;
+            double right_drive = drive;
+            if (left_pos > right_pos) {
+                left_drive += (right_pos - left_pos) * LR_KP;
+            } else {
+                right_drive += (left_pos - right_pos) * LR_KP;
+            }
+
+            if (is_negative) { 
+                left_motor_group.spin(reverse, left_drive, vex::voltageUnits::volt);
+                right_motor_group.spin(forward, right_drive, vex::voltageUnits::volt);
+            } else {
+                left_motor_group.spin(forward, left_drive, vex::voltageUnits::volt);
+                right_motor_group.spin(reverse, right_drive, vex::voltageUnits::volt);
+            } 
+            if ((timer.value() - start_time) > TIMEOUT_TIME) {
+                break;
+            }
+        }
+
+        left_motor_group.stop();
+        right_motor_group.stop();
+    }
 
 void driveForward(int tiles){
     int t = (int)(tiles * TILEREVOLUTIONS);
@@ -259,18 +314,20 @@ void displayStatus() {
             Brain.Screen.clearScreen(red);
             Brain.Screen.drawCircle(50, 50, 50, blue);
             primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Ejecting Red Rings\n");
+            primary_controller.Screen.print("Eject R\n");
             
             break;
         case BLUE:
             Brain.Screen.clearScreen(blue);
-            primary_controller.Screen.print("Ejecting Blue Rings\n");
+            primary_controller.Screen.clearScreen();
+            primary_controller.Screen.print("Eject B\n");
             Brain.Screen.drawCircle(50, 50, 50, red);
             break;
         case OFF:
             Brain.Screen.clearScreen(black);
             Brain.Screen.drawCircle(50, 50, 50, purple);
-            primary_controller.Screen.print("Ejection Off\n");
+            primary_controller.Screen.clearScreen();
+            primary_controller.Screen.print("Eject OFF\n");
             return; 
     }
 }
