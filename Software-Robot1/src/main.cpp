@@ -445,8 +445,12 @@ void autonomous(void) {
     //PathFollowing::driveForward(10, localizer, odometry_constants, 
     //left_motor_group, right_motor_group);
     
-    driveForward(1);
+    driveForward(-2.6);
     wait(2, sec);
+    belt_toggle_on();
+    wait(3, sec);
+    belt_toggle_off();
+
     //driveForward(-1);
     //wait(2, sec);
     driveForward(2);
@@ -539,12 +543,6 @@ void usercontrol(void) {
         else{
             reverse_belt = false;
         }
-    
-
-        
-       
-        
-
         if(buttonR1 && !buttonR2){
             intake_motor.setVelocity(-100, vex::percentUnits::pct);
             intake_motor.spin(forward);
