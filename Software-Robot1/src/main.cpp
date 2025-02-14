@@ -16,7 +16,7 @@ using namespace vex;
 
 
 // Definitions
-#define TURN_SPEED_RATIO 0.5
+#define TURN_SPEED_RATIO 0.61
 #define BELT_THROW_POSITION 638 // Farthest Number of Degrees from starting position needed to throw ring (No more than 1 revolution around BELT)
 #define BELTRANGE 10 // Margin of error around throw position
 #define BELTSPEED -100 // Speed of belt motor
@@ -40,7 +40,7 @@ controller partner_controller = controller(partner);
 
 // define your global instances of motors and other devices here
 motor left_motor_front = motor(PORT17, BLUE_GEAR, false);
-motor left_motor_mid = motor(PORT13, BLUE_GEAR, false);
+motor left_motor_mid = motor(PORT14, BLUE_GEAR, false);
 motor left_motor_back = motor(PORT10, BLUE_GEAR, false);
 motor_group left_motor_group = motor_group(left_motor_front, left_motor_mid, left_motor_back);
 
@@ -49,8 +49,9 @@ motor right_motor_mid = motor(PORT8, BLUE_GEAR, true);
 motor right_motor_back = motor(PORT9, BLUE_GEAR, true);
 motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, right_motor_back);
 
-motor intake_motor = motor(PORT18, GREEN_GEAR, false);
+motor intake_motor = motor(PORT12, GREEN_GEAR, false);
 motor belt_motor = motor(PORT16, BLUE_GEAR, false);
+motor highstake_motor = motor(PORT5, RED_GEAR, false);
 
 digital_out Actuator = digital_out(Brain.ThreeWirePort.H);
 
@@ -58,6 +59,9 @@ digital_out Actuator = digital_out(Brain.ThreeWirePort.H);
 encoder left_encoder = encoder(Brain.ThreeWirePort.A);
 encoder right_encoder = encoder(Brain.ThreeWirePort.C);
 encoder offset_encoder = encoder(Brain.ThreeWirePort.E);
+
+#define HIGHSTAKES_FORWARD_MOTOR_BUTTON partner_controller.ButtonL2.pressing()
+#define HIGHSTAKES_BACKWARD_MOTOR_BUTTON partner_controller.ButtonL1.pressing()
 
 // define further software abstractions
 Pose start_pose;
@@ -260,31 +264,33 @@ void displayStatus() {
             Brain.Screen.clearScreen(red);
             Brain.Screen.drawCircle(50, 50, 50, blue);
             primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Ejecting Red Rings\n");
-
-            secondary_controller.Screen.clearScreen();
-            secondary_controller.Screen.print("Ejecting Red Rings\n");
             
             break;
         case BLUE:
             Brain.Screen.clearScreen(blue);
-            primary_controller.Screen.print("Ejecting Blue Rings\n");
-
-            secondary_controller.Screen.clearScreen();
-            secondary_controller.Screen.print("Ejecting Blue Rings\n");
 
             Brain.Screen.drawCircle(50, 50, 50, red);
             break;
         case OFF:
             Brain.Screen.clearScreen(black);
             Brain.Screen.drawCircle(50, 50, 50, purple);
-
-            primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Ejection Off\n");
-
-            secondary_controller.Screen.clearScreen();
-            secondary_controller.Screen.print("Ejection Off\n");
             return; 
+    }
+    primary_controller.Screen.clearScreen();
+    partner_controller.Screen.clearScreen();
+    switch (currentState) {
+        case RED:
+        primary_controller.Screen.print("Ejecting Red Rings\n");
+        partner_controller.Screen.print("Ejecting Red Rings\n");
+        break;
+        case BLUE:
+        primary_controller.Screen.print("Ejecting Blue Rings\n");
+        partner_controller.Screen.print("Ejecting Blue Rings\n");
+        break;
+        case OFF:
+        primary_controller.Screen.print("Ejection Off\n");
+        partner_controller.Screen.print("Ejection Off\n");
+        break;
     }
 }
 
@@ -295,7 +301,7 @@ int vision_sensor_thread() {
     std::cout<<(int)vSens.getBrightness()<<std::endl;
     while (true) {
         // Check if Button A is pressed to toggle vision state
-        if (secondary_controller.ButtonA.pressing()) {
+        if (partner_controller.ButtonA.pressing()) {
             // Cycle through the states: RED -> BLUE -> OFF -> RED
             currentState = static_cast<VisionState>((currentState + 1) % 3);
 
@@ -361,7 +367,7 @@ void dual_stick_drive(void){
     
     // Motor speed percentage based on cubed function
     float ySpeed = pow(leftStick, 3);
-    float xSpeed = pow(rightStick /*TURN_SPEED_RATIO*/, 3);
+    float xSpeed = pow(rightStick * TURN_SPEED_RATIO, 3);
 
     //if(controller.buttonL2.pressing()):
         //xSpeed = (rightAxis_LR * SHIFT_TURN_SPEED_RATIO) ** 3
@@ -393,10 +399,10 @@ void usercontrol(void) {
     
     // Usercontrol loop
     while(true){
-        bool buttonR1 = secondary_controller.ButtonR1.pressing();
-        bool buttonR2 = secondary_controller.ButtonR2.pressing();
-        bool buttonL1 = secondary_controller.ButtonL1.pressing();
-        bool buttonL2 = secondary_controller.ButtonL2.pressing();
+        bool buttonR1 = partner_controller.ButtonR1.pressing();
+        bool buttonR2 = partner_controller.ButtonR2.pressing();
+        bool buttonL1 = partner_controller.ButtonL1.pressing();
+        bool buttonL2 = partner_controller.ButtonL2.pressing();
 
         if(primary_controller.ButtonX.pressing()){
             Actuator.set(true);
@@ -407,7 +413,7 @@ void usercontrol(void) {
             //std::cout<<"Actuator set to false"<<std::endl;
         }
 
-        if(secondary_controller.ButtonY.pressing()){
+        if(partner_controller.ButtonY.pressing()){
             reverse_belt = true;
             //std::cout<<"Reverse Belt"<<std::endl;
         }
@@ -420,11 +426,11 @@ void usercontrol(void) {
        
         
 
-        if(buttonR1 && !buttonR2){
+        if(buttonL1 && !buttonR1){
             intake_motor.setVelocity(-100, vex::percentUnits::pct);
             intake_motor.spin(forward);
         }
-        else if(buttonR2 && !buttonR1){
+        else if(buttonR1 && !buttonL1){
             intake_motor.setVelocity(100, vex::percentUnits::pct);
             intake_motor.spin(forward); 
         }
@@ -457,9 +463,9 @@ int main() {
     compete.autonomous(autonomous);
     compete.drivercontrol(usercontrol);
 
-    secondary_controller.ButtonR1.pressed(intake_toggle);
-    secondary_controller.ButtonL1.pressed(belt_toggle_on);
-    secondary_controller.ButtonL2.pressed(belt_toggle_off);
+    partner_controller.ButtonR1.pressed(intake_toggle);
+    partner_controller.ButtonR2.pressed(belt_toggle_on);
+    partner_controller.ButtonL2.pressed(belt_toggle_off);
 
     thread beltThread = thread(belt_control);
     thread visionThread = thread(vision_sensor_thread);
