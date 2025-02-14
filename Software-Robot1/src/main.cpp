@@ -36,7 +36,7 @@ vex::brain Brain;
 competition compete;
 // Global instance of controller
 controller primary_controller = controller(primary);
-controller partner_controller = controller(partner);
+controller secondary_controller = controller(partner);
 
 // define your global instances of motors and other devices here
 motor left_motor_front = motor(PORT17, BLUE_GEAR, false);
@@ -49,7 +49,7 @@ motor right_motor_mid = motor(PORT8, BLUE_GEAR, true);
 motor right_motor_back = motor(PORT9, BLUE_GEAR, true);
 motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, right_motor_back);
 
-motor intake_motor = motor(PORT18, GREEN_GEAR, false);
+motor intake_motor = motor(PORT11, GREEN_GEAR, false);
 motor belt_motor = motor(PORT16, BLUE_GEAR, false);
 
 digital_out Actuator = digital_out(Brain.ThreeWirePort.H);
@@ -129,6 +129,17 @@ void driveForward(int tiles){
     right_motor_group.stop(brakeType::brake);
 
     return;
+}
+
+// Actuator Control
+bool actuatorToggle = false;
+void actuator_thread(void){
+    while(true){
+        if(primary_controller.ButtonB.pressing()){
+            (actuatorToggle) ? Actuator.set(false) : Actuator.set(true);
+            actuatorToggle = !actuatorToggle;
+        }
+    }
 }
 
 
@@ -352,6 +363,11 @@ void autonomous(void) {
     driveForward(2);
 }
 
+// Code block for User Control
+enum driveMode{
+    TANK,DUAL_STICK
+};
+
 void dual_stick_drive(void){
 
     // Controls for Up-Down and Left-Right movement
@@ -386,7 +402,36 @@ void dual_stick_drive(void){
     return;
 }
 
-// Code block for User Control
+void tank_drive(void){
+    // Controls for Up-Down and Left-Right movement
+    float leftStick = (primary_controller.Axis3.position() / -(float)100.0);             // Vertical Movement
+    float rightStick = (primary_controller.Axis1.position() / -(float)100.0);            // Horizontal Movement
+   
+    // Motor speed percentage based on cubed function
+    float leftSpeed = pow(leftStick, 3);
+    float rightSpeed = pow(rightStick, 3);
+
+    if(fabs(leftSpeed) > 0.05){
+        //Set the velocity depending on the axis position
+        left_motor_group.setVelocity(leftSpeed * 100,vex::percentUnits::pct);
+        left_motor_group.spin(forward);
+    }
+    else{
+        left_motor_group.stop(coast);
+    }
+
+    if(fabs(rightSpeed) > 0.05){
+        right_motor_group.setVelocity(rightSpeed * 100,vex::percentUnits::pct); 
+        right_motor_group.spin(forward);
+    }
+    else{
+        right_motor_group.stop(coast);
+
+    }  
+
+}
+
+driveMode currentDriveMode = DUAL_STICK;
 void usercontrol(void) {
     Brain.Screen.print("User Control start!");
     Brain.Screen.newLine();
@@ -397,15 +442,6 @@ void usercontrol(void) {
         bool buttonR2 = secondary_controller.ButtonR2.pressing();
         bool buttonL1 = secondary_controller.ButtonL1.pressing();
         bool buttonL2 = secondary_controller.ButtonL2.pressing();
-
-        if(primary_controller.ButtonX.pressing()){
-            Actuator.set(true);
-            //std::cout<<"Actuator set to true"<<std::endl;
-        }
-        else if(primary_controller.ButtonB.pressing()){
-            Actuator.set(false);
-            //std::cout<<"Actuator set to false"<<std::endl;
-        }
 
         if(secondary_controller.ButtonY.pressing()){
             reverse_belt = true;
@@ -444,8 +480,19 @@ void usercontrol(void) {
             belt_motor.stop(brake);
         }
         */
+        if(primary_controller.ButtonUp.pressing())
+            currentDriveMode = TANK;
+        else if(primary_controller.ButtonDown.pressing())
+            currentDriveMode = DUAL_STICK;
 
-        dual_stick_drive();
+        switch (currentDriveMode){
+            case TANK:
+                tank_drive();
+                break;
+            case DUAL_STICK:
+                dual_stick_drive();
+                break;
+        }
     }
 }
 
@@ -461,6 +508,7 @@ int main() {
     secondary_controller.ButtonL1.pressed(belt_toggle_on);
     secondary_controller.ButtonL2.pressed(belt_toggle_off);
 
+    thread actuatorThread = thread(actuator_thread);
     thread beltThread = thread(belt_control);
     thread visionThread = thread(vision_sensor_thread);
 
