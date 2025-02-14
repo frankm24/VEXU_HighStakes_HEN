@@ -138,7 +138,9 @@ void actuator_thread(void){
         if(primary_controller.ButtonB.pressing()){
             (actuatorToggle) ? Actuator.set(false) : Actuator.set(true);
             actuatorToggle = !actuatorToggle;
+            this_thread::sleep_for(250);
         }
+        this_thread::sleep_for(20);
     }
 }
 
