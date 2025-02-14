@@ -36,7 +36,7 @@ vex::brain Brain;
 competition compete;
 // Global instance of controller
 controller primary_controller = controller(primary);
-controller partner_controller = controller(partner);
+controller secondary_controller = controller(partner);
 
 // define your global instances of motors and other devices here
 motor left_motor_front = motor(PORT17, BLUE_GEAR, false);
@@ -60,8 +60,8 @@ encoder left_encoder = encoder(Brain.ThreeWirePort.A);
 encoder right_encoder = encoder(Brain.ThreeWirePort.C);
 encoder offset_encoder = encoder(Brain.ThreeWirePort.E);
 
-#define HIGHSTAKES_FORWARD_MOTOR_BUTTON partner_controller.ButtonX.pressing()
-#define HIGHSTAKES_BACKWARD_MOTOR_BUTTON partner_controller.ButtonY.pressing()
+#define HIGHSTAKES_FORWARD_MOTOR_BUTTON secondary_controller.ButtonX.pressing()
+#define HIGHSTAKES_BACKWARD_MOTOR_BUTTON secondary_controller.ButtonY.pressing()
 
 // define further software abstractions
 Pose start_pose;
@@ -75,7 +75,7 @@ volatile bool belt_toggle_state = false;
 volatile bool color_detected = true; // TODO: Set up control to vision sensor
 volatile bool reverse_belt = false;
 
-
+// PID Defintions
 #define KP 0.01
 #define LR_KP 0.05
 #define TILEREVOLUTIONS 2.78
@@ -354,21 +354,32 @@ void displayStatus() {
             return; 
     }
     primary_controller.Screen.clearScreen();
-    partner_controller.Screen.clearScreen();
+    secondary_controller.Screen.clearScreen();
     switch (currentState) {
         case RED:
         primary_controller.Screen.print("Ejecting Red Rings\n");
-        partner_controller.Screen.print("Ejecting Red Rings\n");
+        secondary_controller.Screen.print("Ejecting Red Rings\n");
         break;
         case BLUE:
         primary_controller.Screen.print("Ejecting Blue Rings\n");
-        partner_controller.Screen.print("Ejecting Blue Rings\n");
+        secondary_controller.Screen.print("Ejecting Blue Rings\n");
         break;
         case OFF:
         primary_controller.Screen.print("Ejection Off\n");
-        partner_controller.Screen.print("Ejection Off\n");
+        secondary_controller.Screen.print("Ejection Off\n");
         break;
     }
+    double belt_motor_temp = belt_motor.temperature(temperatureUnits::celsius);
+    std::string belt_status = "BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1);
+    double battery_soc = Brain.Battery.capacity();
+    std::string battery_status = "BAT" + format_decimal_places(battery_soc, 1);
+
+    primary_controller.Screen.print(belt_status.c_str());
+    secondary_controller.Screen.print(belt_status.c_str());
+
+    primary_controller.Screen.print(battery_status.c_str());
+    secondary_controller.Screen.print(battery_status.c_str());
+    this_thread::sleep_for(100);
 }
 
 // Vision Sensor Thread
@@ -378,7 +389,7 @@ int vision_sensor_thread() {
     std::cout<<(int)vSens.getBrightness()<<std::endl;
     while (true) {
         // Check if Button A is pressed to toggle vision state
-        if (partner_controller.ButtonA.pressing()) {
+        if (secondary_controller.ButtonA.pressing()) {
             // Cycle through the states: RED -> BLUE -> OFF -> RED
             currentState = static_cast<VisionState>((currentState + 1) % 3);
 
@@ -508,10 +519,10 @@ void usercontrol(void) {
     
     // Usercontrol loop
     while(true){
-        bool buttonR1 = partner_controller.ButtonR1.pressing();
-        bool buttonR2 = partner_controller.ButtonR2.pressing();
-        bool buttonL1 = partner_controller.ButtonL1.pressing();
-        bool buttonL2 = partner_controller.ButtonL2.pressing();
+        bool buttonR1 = secondary_controller.ButtonR1.pressing();
+        bool buttonR2 = secondary_controller.ButtonR2.pressing();
+        bool buttonL1 = secondary_controller.ButtonL1.pressing();
+        bool buttonL2 = secondary_controller.ButtonL2.pressing();
 
         if(primary_controller.ButtonX.pressing()){
             Actuator.set(true);
@@ -522,7 +533,7 @@ void usercontrol(void) {
             //std::cout<<"Actuator set to false"<<std::endl;
         }
 
-        if(partner_controller.ButtonY.pressing()){
+        if(secondary_controller.ButtonY.pressing()){
             reverse_belt = true;
             //std::cout<<"Reverse Belt"<<std::endl;
         }
@@ -590,9 +601,9 @@ int main() {
     compete.autonomous(autonomous);
     compete.drivercontrol(usercontrol);
 
-    partner_controller.ButtonR1.pressed(intake_toggle);
-    partner_controller.ButtonR2.pressed(belt_toggle_on);
-    partner_controller.ButtonL2.pressed(belt_toggle_off);
+    secondary_controller.ButtonR1.pressed(intake_toggle);
+    secondary_controller.ButtonR2.pressed(belt_toggle_on);
+    secondary_controller.ButtonL2.pressed(belt_toggle_off);
 
     thread actuatorThread = thread(actuator_thread);
     thread beltThread = thread(belt_control);
