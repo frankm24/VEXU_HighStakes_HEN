@@ -337,20 +337,20 @@ void displayStatus() {
             Brain.Screen.clearScreen(red);
             Brain.Screen.drawCircle(50, 50, 50, blue);
             primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Ejecting Red Rings\n");
+            primary_controller.Screen.print("Eject RED\n");
 
             secondary_controller.Screen.clearScreen();
-            secondary_controller.Screen.print("Ejecting Red Rings\n");
+            secondary_controller.Screen.print("Eject RED\n");
             
             break;
         case BLUE:
             Brain.Screen.clearScreen(blue);
 
             secondary_controller.Screen.clearScreen();
-            secondary_controller.Screen.print("Ejecting Blue Rings\n");
+            secondary_controller.Screen.print("Eject BLU\n");
 
             primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Eject B\n");
+            primary_controller.Screen.print("Eject BLU\n");
             Brain.Screen.drawCircle(50, 50, 50, red);
             break;
         case OFF:
@@ -358,17 +358,32 @@ void displayStatus() {
             Brain.Screen.drawCircle(50, 50, 50, purple);
 
             primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Ejection Off\n");
+            primary_controller.Screen.print("Eject OFF\n");
 
             secondary_controller.Screen.clearScreen();
-            secondary_controller.Screen.print("Ejection Off\n");
+            secondary_controller.Screen.print("Eject OFF\n");
             return; 
     }
+    switch (currentDriveMode){
+        case TANK:
+            primary_controller.Screen.print("DRIVE TANK");
+            secondary_controller.Screen.print("DRIVE TANK");
+            break;
+        case DUAL_STICK:
+            primary_controller.Screen.print("DRIVE DUAL");
+            secondary_controller.Screen.print("DRIVE DUAL");
+            break;
+    }
     double belt_motor_temp = belt_motor.temperature(temperatureUnits::celsius);
+    std::string belt_status = "BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1);
     double battery_soc = Brain.Battery.capacity();
-    primary_controller.Screen.print("BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1));
-    primary_controller.Screen.print("BAT" + format_decimal_places(battery_soc, 1));
-    std::cout<<belt_motor_temp<<std::endl;
+    std::string battery_status = "BAT" + format_decimal_places(battery_soc, 1);
+
+    primary_controller.Screen.print(belt_status);
+    secondary_controller.Screen.print(belt_status);
+
+    primary_controller.Screen.print(battery_status);
+    secondary_controller.Screen.print(battery_status);
 }
 
 // Vision Sensor Thread
