@@ -13,6 +13,7 @@
 #include "path_planning.h"
 #include <sstream>
 #include <iomanip>
+#include <string>
 
 using namespace vex;
 
@@ -332,6 +333,7 @@ void displayAutonomousStatus(Pose current_pose) {
 void displayStatus() {
     Brain.Screen.clearScreen();
     primary_controller.Screen.clearScreen();
+    secondary_controller.Screen.clearScreen();
     Brain.Screen.setCursor(1, 1);
 
     switch (currentState) {
@@ -353,22 +355,18 @@ void displayStatus() {
             Brain.Screen.drawCircle(50, 50, 50, purple);
             return; 
     }
-    primary_controller.Screen.clearScreen();
-    secondary_controller.Screen.clearScreen();
-    switch (currentState) {
-        case RED:
-        primary_controller.Screen.print("Ejecting Red Rings\n");
-        secondary_controller.Screen.print("Ejecting Red Rings\n");
-        break;
-        case BLUE:
-        primary_controller.Screen.print("Ejecting Blue Rings\n");
-        secondary_controller.Screen.print("Ejecting Blue Rings\n");
-        break;
-        case OFF:
-        primary_controller.Screen.print("Ejection Off\n");
-        secondary_controller.Screen.print("Ejection Off\n");
-        break;
+    Brain.Screen.setCursor(2, 1);
+    switch (currentDriveMode){
+        case TANK:
+            primary_controller.Screen.print("DRIVE TANK");
+            secondary_controller.Screen.print("DRIVE TANK");
+            break;
+        case DUAL_STICK:
+            primary_controller.Screen.print("DRIVE DUAL");
+            secondary_controller.Screen.print("DRIVE DUAL");
+            break;
     }
+    Brain.Screen.setCursor(3, 1);
     double belt_motor_temp = belt_motor.temperature(temperatureUnits::celsius);
     std::string belt_status = "BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1);
     double battery_soc = Brain.Battery.capacity();
