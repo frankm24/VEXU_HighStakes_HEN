@@ -11,6 +11,8 @@
 #include <math.h>
 #include "odometry.h"
 #include "path_planning.h"
+#include <sstream>
+#include <iomanip>
 
 using namespace vex;
 
@@ -78,6 +80,12 @@ volatile bool reverse_belt = false;
 #define TIMEOUT_TIME 2000 // Time in milliseconds to wait for a command to complete
 #define MINVOLTAGE 6
 #define MAXVOLTAGE 8
+
+std::string format_decimal_places(double value, int places) {
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(places) << value;
+    return ss.str();
+}
 
 // PID Control
 double PIDControl(double target, double position){
@@ -321,8 +329,9 @@ void displayAutonomousStatus(Pose current_pose) {
 // Function to display the current status on the brain screen
 void displayStatus() {
     Brain.Screen.clearScreen();
+    primary_controller.Screen.clearScreen();
     Brain.Screen.setCursor(1, 1);
-    std::cout<<belt_motor.temperature(temperatureUnits::celsius)<<std::endl;
+
     switch (currentState) {
         case RED:
             Brain.Screen.clearScreen(red);
@@ -355,6 +364,11 @@ void displayStatus() {
             secondary_controller.Screen.print("Ejection Off\n");
             return; 
     }
+    double belt_motor_temp = belt_motor.temperature(temperatureUnits::celsius);
+    double battery_soc = Brain.Battery.capacity();
+    primary_controller.Screen.print("BELT MTR TMP" + format_decimal_places(belt_motor_temp, 1));
+    primary_controller.Screen.print("BAT" + format_decimal_places(battery_soc, 1));
+    std::cout<<belt_motor_temp<<std::endl;
 }
 
 // Vision Sensor Thread
