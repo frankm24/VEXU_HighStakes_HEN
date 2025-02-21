@@ -414,6 +414,16 @@ void autonomous(void) {
     Brain.Screen.newLine();
     //PathFollowing::driveForward(10, localizer, odometry_constants, 
     //left_motor_group, right_motor_group);
+    
+    driveForward(-2.6);
+    wait(2, sec);
+    belt_toggle_on();
+    wait(3, sec);
+    belt_toggle_off();
+
+    //driveForward(-1);
+    //wait(2, sec);
+    driveForward(2);
 }
 
 // Code block for User Control
