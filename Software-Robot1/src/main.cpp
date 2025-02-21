@@ -18,7 +18,7 @@ using namespace vex;
 
 
 // Definitions
-#define TURN_SPEED_RATIO 0.61
+#define TURN_SPEED_RATIO 0.84
 #define BELT_THROW_POSITION 638 // Farthest Number of Degrees from starting position needed to throw ring (No more than 1 revolution around BELT)
 #define BELTRANGE 10 // Margin of error around throw position
 #define BELTSPEED -100 // Speed of belt motor
@@ -49,7 +49,7 @@ motor right_motor_mid = motor(PORT8, BLUE_GEAR, true);
 motor right_motor_back = motor(PORT9, BLUE_GEAR, true);
 motor_group right_motor_group = motor_group(right_motor_front, right_motor_mid, right_motor_back);
 
-motor intake_motor = motor(PORT12, GREEN_GEAR, false);
+motor intake_motor = motor(PORT13, GREEN_GEAR, false);
 motor belt_motor = motor(PORT16, BLUE_GEAR, false);
 motor highstake_motor = motor(PORT5, RED_GEAR, false);
 
@@ -60,8 +60,8 @@ encoder left_encoder = encoder(Brain.ThreeWirePort.A);
 encoder right_encoder = encoder(Brain.ThreeWirePort.C);
 encoder offset_encoder = encoder(Brain.ThreeWirePort.E);
 
-#define HIGHSTAKES_FORWARD_MOTOR_BUTTON partner_controller.ButtonX.pressing()
-#define HIGHSTAKES_BACKWARD_MOTOR_BUTTON partner_controller.ButtonY.pressing()
+#define HIGHSTAKES_FORWARD_MOTOR_BUTTON partner_controller.ButtonB.pressing()
+#define HIGHSTAKES_BACKWARD_MOTOR_BUTTON partner_controller.ButtonX.pressing()
 
 // define further software abstractions
 Pose start_pose;
@@ -169,11 +169,16 @@ void driveForward(int tiles){
         drive = (drive > -MINVOLTAGE && drive < 0) ? -MINVOLTAGE : drive;
 
         // Don't allow drive to go above maximum voltage (speed)
-        drive = (drive > MAXVOLTAGE) ? MAXVOLTAGE : drive;
-        drive = (drive < -MAXVOLTAGE) ? -MAXVOLTAGE : drive;
+        if (drive > MAXVOLTAGE) {
+            drive = MAXVOLTAGE;
+        } else if (drive < -MAXVOLTAGE) {
+            drive = -MAXVOLTAGE;
+        }
 
         // P-Control between left and right motors
-        double left_voltage_drive, right_voltage_drive = drive;
+        double left_voltage_drive = drive;
+        double right_voltage_drive = drive;
+
         if(left_position > right_position)
             left_voltage_drive += (right_position - left_position) * LR_KP; // If left is ahead, slow down left
         else
@@ -200,7 +205,7 @@ void driveForward(int tiles){
 bool actuatorToggle = false;
 void actuator_thread(void){
     while(true){
-        if(primary_controller.ButtonB.pressing()){
+        if(primary_controller.ButtonA.pressing()){
             (actuatorToggle) ? Actuator.set(false) : Actuator.set(true);
             actuatorToggle = !actuatorToggle;
             this_thread::sleep_for(250);
@@ -289,7 +294,6 @@ void belt_control(void){
     }
 }
 
-// Color Sensor
 vision::signature CUS_BLUE = vision::signature(7, -4767, -3699, -4233, 6899, 8623, 7761, 3.2, 0);
 vision::signature CUS_RED = vision::signature(6, 8849, 11299, 10074, -1761, -911, -1336, 1.9, 0);
 
@@ -331,43 +335,26 @@ void displayAutonomousStatus(Pose current_pose) {
 // Function to display the current status on the brain screen
 void displayStatus() {
     Brain.Screen.clearScreen();
-    primary_controller.Screen.clearScreen();
     Brain.Screen.setCursor(1, 1);
-
+    std::cout<<belt_motor.temperature(temperatureUnits::celsius)<<std::endl;
     switch (currentState) {
         case RED:
             Brain.Screen.clearScreen(red);
             Brain.Screen.drawCircle(50, 50, 50, blue);
             primary_controller.Screen.clearScreen();
+            primary_controller.Screen.print("Ejecting Red Rings\n");
             
             break;
         case BLUE:
             Brain.Screen.clearScreen(blue);
-
-            primary_controller.Screen.clearScreen();
-            primary_controller.Screen.print("Eject BLU\n");
+            primary_controller.Screen.print("Ejecting Blue Rings\n");
             Brain.Screen.drawCircle(50, 50, 50, red);
             break;
         case OFF:
             Brain.Screen.clearScreen(black);
             Brain.Screen.drawCircle(50, 50, 50, purple);
+            primary_controller.Screen.print("Ejection Off\n");
             return; 
-    }
-    primary_controller.Screen.clearScreen();
-    partner_controller.Screen.clearScreen();
-    switch (currentState) {
-        case RED:
-        primary_controller.Screen.print("Ejecting Red Rings\n");
-        partner_controller.Screen.print("Ejecting Red Rings\n");
-        break;
-        case BLUE:
-        primary_controller.Screen.print("Ejecting Blue Rings\n");
-        partner_controller.Screen.print("Ejecting Blue Rings\n");
-        break;
-        case OFF:
-        primary_controller.Screen.print("Ejection Off\n");
-        partner_controller.Screen.print("Ejection Off\n");
-        break;
     }
 }
 
@@ -378,7 +365,7 @@ int vision_sensor_thread() {
     std::cout<<(int)vSens.getBrightness()<<std::endl;
     while (true) {
         // Check if Button A is pressed to toggle vision state
-        if (partner_controller.ButtonA.pressing()) {
+        if (primary_controller.ButtonA.pressing()) {
             // Cycle through the states: RED -> BLUE -> OFF -> RED
             currentState = static_cast<VisionState>((currentState + 1) % 3);
 
@@ -391,7 +378,9 @@ int vision_sensor_thread() {
 
         // Take a snapshot if vision is active
         if (currentState != OFF) vSens.takeSnapshot(currentState == RED ? CUS_RED : CUS_BLUE);
-    
+
+        // Display the current status on the screen
+        displayStatus(); 
         //std::cout<<(int)vSens.objectCount<<std::endl;
         // Check if an object is detected
         if (vSens.objects[0].exists) {
@@ -425,12 +414,6 @@ void autonomous(void) {
     Brain.Screen.newLine();
     //PathFollowing::driveForward(10, localizer, odometry_constants, 
     //left_motor_group, right_motor_group);
-    
-    driveForward(1);
-    wait(2, sec);
-    //driveForward(-1);
-    //wait(2, sec);
-    driveForward(2);
 }
 
 // Code block for User Control
@@ -531,22 +514,22 @@ void usercontrol(void) {
         }
     
         if(HIGHSTAKES_FORWARD_MOTOR_BUTTON){
-            highstake_motor.setVelocity(100, vex::percentUnits::pct);
+            highstake_motor.setVelocity(50, vex::percentUnits::pct);
             highstake_motor.spin(forward);
         }
         else if(HIGHSTAKES_BACKWARD_MOTOR_BUTTON){
-            highstake_motor.setVelocity(-100, vex::percentUnits::pct);
+            highstake_motor.setVelocity(-50, vex::percentUnits::pct);
             highstake_motor.spin(forward);
         }
         else{
             highstake_motor.stop(brake);
         }
 
-        if(buttonL1 && !buttonR1){
+        if(buttonR1 && !buttonL1){
             intake_motor.setVelocity(-100, vex::percentUnits::pct);
             intake_motor.spin(forward);
         }
-        else if(buttonR1 && !buttonL1){
+        else if(buttonL1 && !buttonR1){
             intake_motor.setVelocity(100, vex::percentUnits::pct);
             intake_motor.spin(forward); 
         }
